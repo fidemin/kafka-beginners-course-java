@@ -21,13 +21,12 @@ public class ProducerDemoWithCallback {
 
         // create the producer <String, String> : key to be string and value to be string
         try (KafkaProducer<String, String> producer = new KafkaProducer<>(properties)) {
-            ProducerRecord<String, String> record = new ProducerRecord<>(
-                    "first_topic", "hello world");
+            for (int i=0; i<10; i++) {
+                ProducerRecord<String, String> record = new ProducerRecord<>(
+                        "first_topic", "hello world" + i);
 
-            // send data - asynchronous. consumer doesn't receive any message until flush method executed
-            producer.send(record, new Callback() {
-                @Override
-                public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                // send data - asynchronous. consumer doesn't receive any message until flush method executed
+                producer.send(record, (RecordMetadata recordMetadata, Exception e) -> {
                     // execute every time a record is successfully sent or an exception is thrown
                     if (e == null) {
                         // the record was successfully sent
@@ -40,9 +39,8 @@ public class ProducerDemoWithCallback {
                         logger.error("Error while producing", e);
 
                     }
-                }
-            });
-
+                });
+            }
             // flush data : this is essential. data actually send here
             producer.flush();
         }
