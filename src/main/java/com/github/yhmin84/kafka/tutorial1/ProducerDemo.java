@@ -6,6 +6,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 public class ProducerDemo {
     public static void main(String[] args) {
@@ -19,14 +20,16 @@ public class ProducerDemo {
 
         // create the producer <String, String> : key to be string and value to be string
         try (KafkaProducer<String, String> producer = new KafkaProducer<>(properties)) {
-            ProducerRecord<String, String> record = new ProducerRecord<>(
-                    "first_topic", "hello world");
+            ProducerRecord<String, String> record = new ProducerRecord<>("first_topic", "hello world");
 
-            // send data - asynchronous. consumer doesn't receive any message until flush method executed
+            // send data - asynchronous: returns future.
+            // message is saved to buffer until buffer is full.
+            producer.send(record);
             producer.send(record);
 
-            // flush data : this is essential. data actually send here
+            // flush data : this is essential. The data in buffer actually is sent and waiting for it.
             producer.flush();
         }
+
     }
 }

@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 public class ProducerDemoWithCallback {
     public static void main(String[] args) {
@@ -41,7 +42,7 @@ public class ProducerDemoWithCallback {
                     }
                 });
             }
-            // flush data : this is essential. data actually send here
+            // flush data : this is essential. The data in buffer actually is sent and waiting for it.
             producer.flush();
         }
     }
