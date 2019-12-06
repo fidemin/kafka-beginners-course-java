@@ -27,8 +27,11 @@ public class ProducerDemo {
             producer.send(record);
             producer.send(record);
 
-            // flush data : this is essential. The data in buffer actually is sent and waiting for it.
+            // flush data : this is optional. The data in buffer actually is sent and waiting for it.
             producer.flush();
+
+            // close() is essential before shutting down your application. It will send the left messages in buffer.
+            // In this case, try-with-resource statement used for closing.
         }
 
     }

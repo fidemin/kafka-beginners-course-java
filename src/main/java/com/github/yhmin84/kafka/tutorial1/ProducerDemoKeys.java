@@ -51,7 +51,7 @@ public class ProducerDemoKeys {
                     }
                 }).get(); // block the .send() to make it synchronous. don't do this in production
             }
-            // flush data : this is essential. The data in buffer actually is sent and waiting for it.
+
             producer.flush();
         }
     }

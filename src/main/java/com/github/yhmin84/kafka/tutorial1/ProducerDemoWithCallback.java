@@ -43,7 +43,7 @@ public class ProducerDemoWithCallback {
                     }
                 });
             }
-            // flush data : this is essential. The data in buffer actually is sent and waiting for it.
+
             producer.flush();
         }
     }
