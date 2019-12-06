@@ -12,12 +12,12 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Properties;
 
-public class ConsumerDemo {
+public class ConsumerDemoGroups {
     public static void main(String[] args) {
-        Logger logger = LoggerFactory.getLogger(ConsumerDemo.class.getName());
+        Logger logger = LoggerFactory.getLogger(ConsumerDemoGroups.class.getName());
 
         String bootstrapServers = "127.0.0.1:9092";
-        String groupId = "my-fourth-application";
+        String groupId = "my-fifth-application";
         String topic = "first_topic";
 
         Properties properties = new Properties();
@@ -36,7 +36,7 @@ public class ConsumerDemo {
         // poll for new data
         // read all the values from partition 0 first, partition 1 second, partition 2 third
         // if multi messages in brokers.
-        while (true) {
+        while (true) {   // while (true) is not good practice
             ConsumerRecords<String, String> records
                     = consumer.poll(Duration.ofMillis(100)); // new in Kafka 2.0.0
 
