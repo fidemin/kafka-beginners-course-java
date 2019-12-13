@@ -22,10 +22,10 @@ public class TwitterProducer {
 
     Logger logger = LoggerFactory.getLogger(TwitterProducer.class.getName());
 
-    String consumerKey = "Dos50ANKASbHVfIrdZmbvTQzT";
-    String consumerSecret = "XBYw4kphKcaXjVhemQMMgXv8dpA518FrYsnmN8R0gbZ6zxCiMq";
-    String accessToken = "169457543-91z233zppQJdGk8m1pg5YT9MPIXm5ucSXKV8KT4J";
-    String accessTokenSecret = "Rsk32Zi8mziIipXru07qCWNhNWQAtucUSvV9aIff95vLO";
+    String consumerKey = System.getenv("TWITTER_CONSUMER_KEY");
+    String consumerSecret = System.getenv("TWITTER_CONSUMER_SECRET");
+    String accessToken = System.getenv("TWITTER_ACCESS_TOKEN");
+    String accessTokenSecret = System.getenv("TWITTER_ACCESS_SECRET");
 
     BlockingQueue<String> msgQueue = new LinkedBlockingQueue<>(100000);
 
