@@ -26,7 +26,8 @@ public class ProducerDemoWithCallback {
                 ProducerRecord<String, String> record = new ProducerRecord<>(
                         "first_topic", "hello world" + i);
 
-                // send data - asynchronous. consumer doesn't receive any message until flush method executed
+                // send data - asynchronous
+                // consumer doesn't receive any message until buffer is full or flush or close method is not executed.
                 // the data sequence in consumer does not guarantee the sequence of input 0, 1, 2, ..., 9
                 producer.send(record, (RecordMetadata recordMetadata, Exception e) -> {
                     // execute every time a record is successfully sent or an exception is thrown

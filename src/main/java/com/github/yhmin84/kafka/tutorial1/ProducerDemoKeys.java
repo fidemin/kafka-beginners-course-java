@@ -35,7 +35,8 @@ public class ProducerDemoKeys {
                 // same key always goes to the same partition!
                 logger.info("Key: " + key);
 
-                // send data - asynchronous. consumer doesn't receive any message until flush method executed
+                // send data - asynchronous.
+                // consumer doesn't receive any message until buffer is full or flush or close method is not executed.
                 producer.send(record, (RecordMetadata recordMetadata, Exception e) -> {
                     // execute every time a record is successfully sent or an exception is thrown
                     if (e == null) {
