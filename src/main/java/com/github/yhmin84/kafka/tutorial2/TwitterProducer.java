@@ -10,10 +10,16 @@ import com.twitter.hbc.core.endpoint.StatusesFilterEndpoint;
 import com.twitter.hbc.core.processor.StringDelimitedProcessor;
 import com.twitter.hbc.httpclient.auth.Authentication;
 import com.twitter.hbc.httpclient.auth.OAuth1;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +49,17 @@ public class TwitterProducer {
         client.connect();
 
         // create a kafka producer
+        logger.info("Create kafka producer");
+        KafkaProducer<String, String> producer = createKafkaProducer();
+
+        // add a shutdown hook
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            logger.info("stopping application...");
+            logger.info("shutting down client from twitter...");
+            client.stop();
+            logger.info("closing producer...");
+            producer.close(); // required for sending all messages in memory buffer to kafka topic
+        }));
 
         // loop to send tweets to kafka
         while (!client.isDone()) {
@@ -56,11 +73,15 @@ public class TwitterProducer {
 
             if (msg != null) {
                 logger.info(msg);
+                ProducerRecord<String, String> record = new ProducerRecord<>("twitter-tweets", null, msg);
+                producer.send(record, (RecordMetadata recordMetadata, Exception e) -> {
+                    if (e != null) {
+                        logger.error("the error when sending message to topic: ", e.getMessage());
+                    }
+                });
             }
         }
-        logger.info("End of application");
     }
-
 
     public Client createTwitterClient(BlockingQueue<String> msgQueue) {
         /** Declare the host you want to connect to, the endpoint, and authentication (basic auth or oauth) */
@@ -82,5 +103,15 @@ public class TwitterProducer {
                 .processor(new StringDelimitedProcessor(msgQueue));
 
         return builder.build();
+    }
+
+    public KafkaProducer<String, String> createKafkaProducer() {
+        String bootstrapServers = "127.0.0.1:9092";
+        Properties properties = new Properties();
+        properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+        return new KafkaProducer<>(properties);
     }
 }
