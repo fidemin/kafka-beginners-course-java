@@ -35,6 +35,9 @@ public class TwitterProducer {
 
     BlockingQueue<String> msgQueue = new LinkedBlockingQueue<>(100000);
 
+    String topic = "twitter-tweets";
+    List<String> terms = Lists.newArrayList("bitcoin", "usa", "politics", "soccer");
+
 
     public TwitterProducer(){}
 
@@ -73,7 +76,7 @@ public class TwitterProducer {
 
             if (msg != null) {
                 logger.info(msg);
-                ProducerRecord<String, String> record = new ProducerRecord<>("twitter-tweets", null, msg);
+                ProducerRecord<String, String> record = new ProducerRecord<>(topic, null, msg);
                 producer.send(record, (RecordMetadata recordMetadata, Exception e) -> {
                     if (e != null) {
                         logger.error("the error when sending message to topic: ", e.getMessage());
@@ -87,7 +90,6 @@ public class TwitterProducer {
         /** Declare the host you want to connect to, the endpoint, and authentication (basic auth or oauth) */
         Hosts hosebirdHosts = new HttpHosts(Constants.STREAM_HOST);
         StatusesFilterEndpoint hosebirdEndpoint = new StatusesFilterEndpoint();
-        List<String> terms = Lists.newArrayList("kafka");
         hosebirdEndpoint.trackTerms(terms);
 
         // These secrets should be read from a config file
@@ -118,6 +120,12 @@ public class TwitterProducer {
         // 1. Acks=all, 2. max.in.flight.request.per.connection <= 5, 3. retries=MAX_INT
         // even if these configs do not appears in ProducerConfig log.
         properties.setProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
+
+        // high throughput producer (at the expence of latency and CPU usage)
+        properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+        properties.setProperty(ProducerConfig.LINGER_MS_CONFIG, "20");
+        properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, Integer.toString(32*1024));  // 32 KB batch size
+
 
         return new KafkaProducer<>(properties);
     }
