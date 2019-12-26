@@ -1,5 +1,6 @@
 package kafka.tutorial3;
 
+import com.google.gson.JsonParser;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -10,7 +11,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Properties;
 
 public class ElasticSearchConsumer {
@@ -74,9 +73,6 @@ public class ElasticSearchConsumer {
         Logger logger = LoggerFactory.getLogger(ElasticSearchConsumer.class.getName());
         RestHighLevelClient client = createClient();
 
-
-
-
         KafkaConsumer<String, String> consumer = createConsumer("twitter_tweets");
 
         while (true) {
@@ -84,14 +80,20 @@ public class ElasticSearchConsumer {
                     = consumer.poll(Duration.ofMillis(100)); // new in Kafka 2.0.0
 
             for (ConsumerRecord<String, String> record: records) {
+                // 2 strategies to make unique id per log
+                // 1. kafka generic ID
+                //String id = record.topic() + "_" + record.partition() + "_" + record.offset();
+
+                // 2. twitter feed specific id
+                String id = extractIdFromTweet(record.value());
 
                 // where we insert data into ES
                 IndexRequest indexRequest = new IndexRequest("twitter");
+                indexRequest.id(id);  // to make consumer idempotent
                 indexRequest.source(record.value(), XContentType.JSON);
 
                 IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
-                String id = indexResponse.getId();
-                logger.info(id);
+                logger.info(indexResponse.getId());
 
                 try {
                     Thread.sleep(1000);
@@ -103,5 +105,11 @@ public class ElasticSearchConsumer {
 
         // close the client gracefully
         //client.close();
+    }
+
+    private static String extractIdFromTweet(String tweetJson) {
+        return JsonParser.parseString(tweetJson)
+                .getAsJsonObject()
+                .get("id_str").getAsString();
     }
 }
