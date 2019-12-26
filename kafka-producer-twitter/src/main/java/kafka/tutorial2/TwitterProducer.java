@@ -35,7 +35,7 @@ public class TwitterProducer {
 
     BlockingQueue<String> msgQueue = new LinkedBlockingQueue<>(100000);
 
-    String topic = "twitter-tweets";
+    String topic = "twitter_tweets";
     List<String> terms = Lists.newArrayList("bitcoin", "usa", "politics", "soccer");
 
 
