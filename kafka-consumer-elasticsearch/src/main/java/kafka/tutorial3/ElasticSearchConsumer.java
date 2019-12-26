@@ -30,24 +30,34 @@ import java.util.Properties;
 public class ElasticSearchConsumer {
     public static RestHighLevelClient createClient() {
         String hostname = System.getenv("ES_HOSTNAME");
-        String username = System.getenv("ES_USERNAME");
-        String password = System.getenv("ES_PASSWORD");
+        //String username = System.getenv("ES_USERNAME");
+        //String password = System.getenv("ES_PASSWORD");
+        String httpScheme = System.getenv("ES_PROTOCOL");
+        String portStr = System.getenv("ES_PORT");
+        Integer port = Integer.parseInt(portStr);
 
         // don't do if you run local ES
+        /*
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(AuthScope.ANY,
                 new UsernamePasswordCredentials(username, password));
+        */
 
         RestClientBuilder builder = RestClient.builder(
                 // connnecting to hostname
-                new HttpHost(hostname, 443, "https")
-        ).setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
+                new HttpHost(hostname, port, "http")
+        );
+
+        // only for credential required
+                /*
+                .setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
             @Override
             public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpAsyncClientBuilder) {
                 // use credential when connecting to host name
                 return httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
             }
         });
+        */
 
         return new RestHighLevelClient(builder);
     }
@@ -62,6 +72,8 @@ public class ElasticSearchConsumer {
         properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"); // latest, none
+        properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false"); // disable autocommit offset
+        properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "10"); // disable autocommit offset
 
         // create consumer
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
@@ -79,6 +91,8 @@ public class ElasticSearchConsumer {
             ConsumerRecords<String, String> records
                     = consumer.poll(Duration.ofMillis(100)); // new in Kafka 2.0.0
 
+            logger.info("Received " + records.count() + " records...");
+
             for (ConsumerRecord<String, String> record: records) {
                 // 2 strategies to make unique id per log
                 // 1. kafka generic ID
@@ -95,12 +109,18 @@ public class ElasticSearchConsumer {
                 IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
                 logger.info(indexResponse.getId());
 
+
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(500);
                 } catch (InterruptedException e) {
                    e.printStackTrace();
                 }
             }
+            // If consumer stops in the middle of 'for records loop', all records in 'records' are not committed.
+            // After starting consumer again, 'for loop' starts with the first record of the stopped loop.
+            logger.info("Committing offsets...");
+            consumer.commitSync();
+            logger.info("Offsets have been committed");
         }
 
         // close the client gracefully
