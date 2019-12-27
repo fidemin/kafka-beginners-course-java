@@ -73,3 +73,6 @@ fabric.properties
 
 # build class
 **/target/classes/**
+
+# properties
+twitter.properties
