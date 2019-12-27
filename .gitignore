@@ -72,4 +72,4 @@ fabric.properties
 
 
 # build class
-**/target/classes/**/*.class
+**/target/classes/**
