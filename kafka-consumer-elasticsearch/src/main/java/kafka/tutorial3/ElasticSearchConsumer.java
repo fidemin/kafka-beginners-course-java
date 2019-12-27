@@ -12,6 +12,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -73,7 +75,7 @@ public class ElasticSearchConsumer {
         properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"); // latest, none
         properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false"); // disable autocommit offset
-        properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "10"); // disable autocommit offset
+        properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "100"); // max poll size for consumer.poll
 
         // create consumer
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
@@ -91,7 +93,10 @@ public class ElasticSearchConsumer {
             ConsumerRecords<String, String> records
                     = consumer.poll(Duration.ofMillis(100)); // new in Kafka 2.0.0
 
-            logger.info("Received " + records.count() + " records...");
+            Integer recordCount = records.count();
+            logger.info("Received " + recordCount + " records...");
+
+            BulkRequest bulkRequest = new BulkRequest();
 
             for (ConsumerRecord<String, String> record: records) {
                 // 2 strategies to make unique id per log
@@ -106,21 +111,26 @@ public class ElasticSearchConsumer {
                 indexRequest.id(id);  // to make consumer idempotent
                 indexRequest.source(record.value(), XContentType.JSON);
 
-                IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
-                logger.info(indexResponse.getId());
+                bulkRequest.add(indexRequest);
 
-
+                //IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
+                //logger.info(indexResponse.getId());
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(10);
                 } catch (InterruptedException e) {
                    e.printStackTrace();
                 }
             }
-            // If consumer stops in the middle of 'for records loop', all records in 'records' are not committed.
-            // After starting consumer again, 'for loop' starts with the first record of the stopped loop.
-            logger.info("Committing offsets...");
-            consumer.commitSync();
-            logger.info("Offsets have been committed");
+
+            if (recordCount > 0) {
+                BulkResponse bulkResponse = client.bulk(bulkRequest, RequestOptions.DEFAULT);
+
+                // If consumer stops in the middle of 'for records loop', all records in 'records' are not committed.
+                // After starting consumer again, 'for loop' starts with the first record of the stopped loop.
+                logger.info("Committing offsets...");
+                consumer.commitSync();
+                logger.info("Offsets have been committed");
+            }
         }
 
         // close the client gracefully
